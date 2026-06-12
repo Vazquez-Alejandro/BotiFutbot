@@ -7,8 +7,6 @@ __pycache__/
 env/
 venv/
 ENV/
-env/
-venv/
 
 # IDE
 .vscode/
@@ -29,7 +27,12 @@ data/*.db
 .DS_Store
 Thumbs.db
 
-# Distribución
+# Node
+node_modules/
+.next/
+out/
+
+# Build
 dist/
 build/
 *.egg-info/
