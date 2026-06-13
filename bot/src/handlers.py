@@ -1,6 +1,6 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
-from src.config import CONTINENTES, PAISES_POR_CONTINENTE, EQUIPOS_POR_LIGA
+from src.config import CONTINENTES, PAISES_POR_CONTINENTE, EQUIPOS_POR_LIGA, LIGAS_SELECCIONES
 from src.database import (
     guardar_usuario,
     obtener_usuario,
@@ -179,7 +179,26 @@ async def seleccionar_liga(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     break
             break
 
-    equipos = EQUIPOS_POR_LIGA.get((liga_id, 2024), [])
+    if continente_key == "selecciones":
+        season = 2024
+        for ls in LIGAS_SELECCIONES:
+            if ls["id"] == liga_id:
+                season = ls["season"]
+                break
+        equipos = EQUIPOS_POR_LIGA.get((liga_id, season), [])
+        if not equipos:
+            standings = football_client.obtener_clasificacion(liga_id, season)
+            for group in standings:
+                league_data = group.get("league", {})
+                for group_standings in league_data.get("standings", []):
+                    for team_entry in group_standings:
+                        team = team_entry.get("team", {})
+                        tid = team.get("id")
+                        tname = team.get("name")
+                        if tid and tname and not any(e["id"] == tid for e in equipos):
+                            equipos.append({"id": tid, "nombre": tname})
+    else:
+        equipos = EQUIPOS_POR_LIGA.get((liga_id, 2024), [])
 
     if not equipos:
         await query.edit_message_text(
@@ -353,7 +372,7 @@ async def ayuda(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/buscar - Buscar un equipo\n"
         "/noticias - Ver noticias\n"
         "/live - Partidos en vivo\n"
-        "/mundial - Mundial 2026\n"
+        "/mundial - Mundial 2022\n"
         "/premium - Planes premium\n"
         "/afiliados - Programa de afiliados\n"
         "/stats - Estadísticas del bot\n"

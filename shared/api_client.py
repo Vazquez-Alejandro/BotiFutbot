@@ -66,7 +66,19 @@ class FootballAPIClient:
         from datetime import datetime, timedelta
         hoy = datetime.utcnow().strftime("%Y-%m-%d")
         futuro = (datetime.utcnow() + timedelta(days=30)).strftime("%Y-%m-%d")
-        return self._request("fixtures", {"team": equipo_id, "season": temporadas, "from": hoy, "to": futuro}) or []
+        ids_vistos = set()
+        resultados = []
+        for season in [temporadas, 2025, 2026, 2022, 2023]:
+            params = {"team": equipo_id, "season": season, "from": hoy, "to": futuro}
+            data = self._request("fixtures", params) or []
+            for item in data:
+                fid = item.get("fixture", {}).get("id")
+                if fid and fid not in ids_vistos:
+                    ids_vistos.add(fid)
+                    resultados.append(item)
+            if data:
+                break
+        return resultados
 
     def obtener_partidos_por_equipo(self, equipo_id: int, temporadas: int = 2024) -> list:
         return self._request("fixtures", {"team": equipo_id, "season": temporadas, "last": 5}) or []

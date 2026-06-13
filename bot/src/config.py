@@ -18,7 +18,14 @@ CONTINENTES = {
     "🌍 Asia": "asia",
     "🌍 Africa": "africa",
     "🌍 Oceanía": "oceania",
+    "🏆 Selecciones": "selecciones",
 }
+
+LIGAS_SELECCIONES = [
+    {"id": 1, "nombre": "🌍 Mundial", "season": 2022},
+    {"id": 9, "nombre": "🌎 Copa América", "season": 2024},
+    {"id": 4, "nombre": "🌍 Eurocopa", "season": 2024},
+]
 
 PAISES_POR_CONTINENTE = {
     "americas": {
@@ -136,6 +143,9 @@ PAISES_POR_CONTINENTE = {
         "🇳🇿 Nueva Zelanda": {"code": "NZ", "ligas": [
             {"id": 190, "nombre": "ISPS Handa Premiership"},
         ]},
+    },
+    "selecciones": {
+        "🌍 Torneos Internacionales": {"code": "INTL", "ligas": LIGAS_SELECCIONES},
     },
 }
 
@@ -276,6 +286,19 @@ EQUIPOS_POR_LIGA = {
         {"id": 149, "nombre": "Metz"},
         {"id": 150, "nombre": "Lorient"},
         {"id": 151, "nombre": "Le Havre"},
+    ],
+    # Selecciones - Copa América (league_id: 9, season: 2024)
+    (9, 2024): [
+        {"id": 26, "nombre": "Argentina"},
+        {"id": 27, "nombre": "Brasil"},
+        {"id": 28, "nombre": "Uruguay"},
+        {"id": 29, "nombre": "Colombia"},
+        {"id": 30, "nombre": "Chile"},
+        {"id": 31, "nombre": "Perú"},
+        {"id": 32, "nombre": "Ecuador"},
+        {"id": 33, "nombre": "Paraguay"},
+        {"id": 34, "nombre": "Bolivia"},
+        {"id": 35, "nombre": "Venezuela"},
     ],
     # Brasil - Serie A (league_id: 3, season: 2024)
     (3, 2024): [

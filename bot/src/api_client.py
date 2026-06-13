@@ -91,8 +91,19 @@ class FootballAPIClient:
         from datetime import datetime, timedelta
         hoy = datetime.utcnow().strftime("%Y-%m-%d")
         futuro = (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%d")
-        params = {"team": equipo_id, "season": temporadas, "from": hoy, "to": futuro}
-        return self._request("fixtures", params) or []
+        ids_vistos = set()
+        resultados = []
+        for season in [temporadas, 2025, 2026, 2022, 2023]:
+            params = {"team": equipo_id, "season": season, "from": hoy, "to": futuro}
+            data = self._request("fixtures", params) or []
+            for item in data:
+                fid = item.get("fixture", {}).get("id")
+                if fid and fid not in ids_vistos:
+                    ids_vistos.add(fid)
+                    resultados.append(item)
+            if data:
+                break
+        return resultados
 
     def obtener_partidos_en_vivo_por_equipo(self, equipo_id: int) -> list:
         params = {"team": equipo_id, "live": "all"}
@@ -100,6 +111,9 @@ class FootballAPIClient:
 
     def obtener_eventos_partido(self, fixture_id: int) -> list:
         return self._request("fixtures/events", {"fixture": fixture_id}) or []
+
+    def obtener_clasificacion(self, league_id: int, season: int = 2024) -> list:
+        return self._request("standings", {"league": league_id, "season": season}) or []
 
 
 football_client = FootballAPIClient()
