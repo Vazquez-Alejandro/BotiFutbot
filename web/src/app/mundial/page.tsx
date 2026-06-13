@@ -151,7 +151,7 @@ function GroupsTab({ groups }: { groups: Group[] }) {
                     <td className="px-3 py-2 text-gray-400">{team.position}</td>
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2">
-                        {team.team_logo && <img src={team.team_logo} alt="" className="w-5 h-5" />}
+                        {team.team_logo && <span className="text-lg">{team.team_logo}</span>}
                         <span className="text-white font-medium">{team.team_name}</span>
                       </div>
                     </td>
