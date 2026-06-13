@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "8000:8000"
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.bot
+    env_file: .env
+    depends_on:
+      - api
+    volumes:
+      - .:/app
+      - ./data:/app/data
+    command: python bot/bot.py
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - api
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: botifutbol
+      POSTGRES_USER: botifutbol
+      POSTGRES_PASSWORD: botifutbol_secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U botifutbol"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:

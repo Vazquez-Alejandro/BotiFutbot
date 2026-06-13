@@ -5,13 +5,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from api.config import get_settings
-from api.routes import auth, leagues, users
+from api.routes import auth, leagues, users, monetization
 from shared.database import engine, Base
 
 settings = get_settings()
 
-app = FastAPI(title="BotifutBot API", version="1.0.0")
+app = FastAPI(title="BotifutBot API", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -24,6 +25,9 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(leagues.router)
 app.include_router(users.router)
+app.include_router(monetization.router)
+
+app.mount("/assets", StaticFiles(directory="../assets"), name="assets")
 
 
 @app.on_event("startup")

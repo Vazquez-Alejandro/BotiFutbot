@@ -3,7 +3,13 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'BotifutBot - Fútbol en tiempo real',
-  description: 'Noticias, estadísticas y competiciones de fútbol',
+  description: 'Noticias, estadísticas, partidos en vivo y competiciones de fútbol',
+  icons: { icon: '/logo.png' },
+  openGraph: {
+    title: 'BotifutBot - Fútbol en tiempo real',
+    description: 'Seguí tus equipos, recibí notificaciones y competí con amigos',
+    images: ['/logo.png'],
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

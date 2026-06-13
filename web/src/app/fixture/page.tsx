@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Calendar, ArrowLeft, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { apiGet } from '@/lib/api'
 import { LIGAS } from '@/lib/ligas'
+import { AdBanner } from '@/lib/utils'
 
 interface Match {
   id: number
@@ -49,6 +50,8 @@ export default function FixturePage() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-6">
+        <AdBanner />
+
         <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide">
           {LIGAS.map(liga => (
             <button
