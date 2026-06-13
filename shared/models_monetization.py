@@ -62,5 +62,5 @@ class EventoAnalytics(Base):
     usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
     tipo = Column(String)
     pagina = Column(String)
-    metadata = Column(String, nullable=True)
+    extra_data = Column(String, nullable=True)
     creado_en = Column(DateTime, default=datetime.utcnow)

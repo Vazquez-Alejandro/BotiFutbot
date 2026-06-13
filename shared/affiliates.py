@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
-from shared.models import Click, Conversion, Usuario
+from shared.models_monetization import Click, Conversion
+from shared.models import Usuario
 from datetime import datetime
 
 AFILIADOS = {

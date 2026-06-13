@@ -1,10 +1,14 @@
-import sqlite3
 import json
 import os
+import sys
 from typing import Optional
 from dataclasses import dataclass
 
-DB_PATH = "data/botifutbol.db"
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+from sqlalchemy.orm import Session
+from shared.database import SessionLocal, engine, Base
+from shared.models import BotUsuario, EventoEnviado, NoticiaEnviada, PartidoProgramado
 
 
 @dataclass
@@ -16,282 +20,275 @@ class Usuario:
 
 
 def init_db():
-    os.makedirs("data", exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS usuarios (
-            chat_id INTEGER PRIMARY KEY,
-            username TEXT,
-            equipos TEXT DEFAULT '[]',
-            activo INTEGER DEFAULT 1,
-            creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS eventos_enviados (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            chat_id INTEGER,
-            evento_id TEXT,
-            tipo TEXT,
-            enviado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (chat_id) REFERENCES usuarios(chat_id)
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS noticias_enviadas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            chat_id INTEGER,
-            noticia_url TEXT UNIQUE,
-            enviado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS partidos_programados (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            chat_id INTEGER,
-            equipo_id INTEGER,
-            equipo_nombre TEXT,
-            fixture_id TEXT,
-            fecha_utc TIMESTAMP,
-            local TEXT,
-            visitante TEXT,
-            liga TEXT,
-            notificado_inicio INTEGER DEFAULT 0,
-            notificado_15min INTEGER DEFAULT 0,
-            notificado_manana INTEGER DEFAULT 0,
-            en_vivo INTEGER DEFAULT 0,
-            goles_local INTEGER DEFAULT 0,
-            goles_visitante INTEGER DEFAULT 0,
-            estado TEXT DEFAULT '',
-            enviado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (chat_id) REFERENCES usuarios(chat_id)
-        )
-    """)
-    conn.commit()
-    conn.close()
+    from shared.database import DATABASE_URL
+    if DATABASE_URL and DATABASE_URL.startswith("sqlite"):
+        db_path = DATABASE_URL.replace("sqlite:///", "")
+        db_dir = os.path.dirname(db_path)
+        if db_dir and not os.path.exists(db_dir):
+            os.makedirs(db_dir, exist_ok=True)
+    Base.metadata.create_all(bind=engine)
+
+
+def _get_session() -> Session:
+    return SessionLocal()
 
 
 def guardar_usuario(chat_id: int, username: Optional[str] = None):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT OR IGNORE INTO usuarios (chat_id, username) VALUES (?, ?)",
-        (chat_id, username),
-    )
-    conn.commit()
-    conn.close()
+    session = _get_session()
+    try:
+        existing = session.query(BotUsuario).filter(BotUsuario.chat_id == chat_id).first()
+        if not existing:
+            session.add(BotUsuario(chat_id=chat_id, username=username))
+            session.commit()
+    finally:
+        session.close()
 
 
 def obtener_usuario(chat_id: int) -> Optional[Usuario]:
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM usuarios WHERE chat_id = ?", (chat_id,))
-    row = cursor.fetchone()
-    conn.close()
-    if row:
-        return Usuario(
-            chat_id=row[0],
-            username=row[1],
-            equipos=json.loads(row[2]),
-            activo=bool(row[3]),
-        )
-    return None
+    session = _get_session()
+    try:
+        row = session.query(BotUsuario).filter(BotUsuario.chat_id == chat_id).first()
+        if row:
+            return Usuario(
+                chat_id=row.chat_id,
+                username=row.username,
+                equipos=json.loads(row.equipos),
+                activo=bool(row.activo),
+            )
+        return None
+    finally:
+        session.close()
 
 
 def agregar_equipo(chat_id: int, equipo_id: int, equipo_nombre: str):
-    usuario = obtener_usuario(chat_id)
-    if not usuario:
-        guardar_usuario(chat_id)
-        usuario = obtener_usuario(chat_id)
+    session = _get_session()
+    try:
+        row = session.query(BotUsuario).filter(BotUsuario.chat_id == chat_id).first()
+        if not row:
+            row = BotUsuario(chat_id=chat_id)
+            session.add(row)
+            session.flush()
 
-    equipos = usuario.equipos
-    equipo_info = {"id": equipo_id, "nombre": equipo_nombre}
-    if not any(e["id"] == equipo_id for e in equipos):
-        equipos.append(equipo_info)
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute(
-            "UPDATE usuarios SET equipos = ? WHERE chat_id = ?",
-            (json.dumps(equipos), chat_id),
-        )
-        conn.commit()
-        conn.close()
-    return equipos
+        equipos = json.loads(row.equipos)
+        equipo_info = {"id": equipo_id, "nombre": equipo_nombre}
+        if not any(e["id"] == equipo_id for e in equipos):
+            equipos.append(equipo_info)
+            row.equipos = json.dumps(equipos)
+            session.commit()
+    finally:
+        session.close()
 
 
 def eliminar_equipo(chat_id: int, equipo_id: int) -> list:
-    usuario = obtener_usuario(chat_id)
-    if not usuario:
-        return []
-
-    equipos = [e for e in usuario.equipos if e["id"] != equipo_id]
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        "UPDATE usuarios SET equipos = ? WHERE chat_id = ?",
-        (json.dumps(equipos), chat_id),
-    )
-    conn.commit()
-    conn.close()
-    return equipos
+    session = _get_session()
+    try:
+        row = session.query(BotUsuario).filter(BotUsuario.chat_id == chat_id).first()
+        if not row:
+            return []
+        equipos = json.loads(row.equipos)
+        equipos = [e for e in equipos if e["id"] != equipo_id]
+        row.equipos = json.dumps(equipos)
+        session.commit()
+        return equipos
+    finally:
+        session.close()
 
 
 def obtener_todos_los_usuarios() -> list[Usuario]:
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM usuarios WHERE activo = 1")
-    rows = cursor.fetchall()
-    conn.close()
-    return [
-        Usuario(
-            chat_id=row[0],
-            username=row[1],
-            equipos=json.loads(row[2]),
-            activo=bool(row[3]),
-        )
-        for row in rows
-    ]
+    session = _get_session()
+    try:
+        rows = session.query(BotUsuario).filter(BotUsuario.activo == True).all()
+        return [
+            Usuario(
+                chat_id=row.chat_id,
+                username=row.username,
+                equipos=json.loads(row.equipos),
+                activo=bool(row.activo),
+            )
+            for row in rows
+        ]
+    finally:
+        session.close()
 
 
 def verificar_evento_enviado(chat_id: int, evento_id: str) -> bool:
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT COUNT(*) FROM eventos_enviados WHERE chat_id = ? AND evento_id = ?",
-        (chat_id, evento_id),
-    )
-    count = cursor.fetchone()[0]
-    conn.close()
-    return count > 0
+    session = _get_session()
+    try:
+        count = session.query(EventoEnviado).filter(
+            EventoEnviado.chat_id == chat_id,
+            EventoEnviado.evento_id == evento_id,
+        ).count()
+        return count > 0
+    finally:
+        session.close()
 
 
 def registrar_evento_enviado(chat_id: int, evento_id: str, tipo: str):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO eventos_enviados (chat_id, evento_id, tipo) VALUES (?, ?, ?)",
-        (chat_id, evento_id, tipo),
-    )
-    conn.commit()
-    conn.close()
+    session = _get_session()
+    try:
+        session.add(EventoEnviado(chat_id=chat_id, evento_id=evento_id, tipo=tipo))
+        session.commit()
+    finally:
+        session.close()
 
 
 def verificar_noticia_enviada(chat_id: int, noticia_url: str) -> bool:
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT COUNT(*) FROM noticias_enviadas WHERE chat_id = ? AND noticia_url = ?",
-        (chat_id, noticia_url),
-    )
-    count = cursor.fetchone()[0]
-    conn.close()
-    return count > 0
+    session = _get_session()
+    try:
+        count = session.query(NoticiaEnviada).filter(
+            NoticiaEnviada.chat_id == chat_id,
+            NoticiaEnviada.noticia_url == noticia_url,
+        ).count()
+        return count > 0
+    finally:
+        session.close()
 
 
 def registrar_noticia_enviada(chat_id: int, noticia_url: str):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
+    session = _get_session()
     try:
-        cursor.execute(
-            "INSERT INTO noticias_enviadas (chat_id, noticia_url) VALUES (?, ?)",
-            (chat_id, noticia_url),
-        )
-        conn.commit()
-    except sqlite3.IntegrityError:
-        pass
-    conn.close()
+        existing = session.query(NoticiaEnviada).filter(
+            NoticiaEnviada.noticia_url == noticia_url
+        ).first()
+        if not existing:
+            session.add(NoticiaEnviada(chat_id=chat_id, noticia_url=noticia_url))
+            session.commit()
+    finally:
+        session.close()
 
 
 def programar_partido(chat_id: int, equipo_id: int, equipo_nombre: str,
                       fixture_id: str, fecha_utc: str, local: str,
                       visitante: str, liga: str):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        """INSERT OR IGNORE INTO partidos_programados
-           (chat_id, equipo_id, equipo_nombre, fixture_id, fecha_utc,
-            local, visitante, liga)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-        (chat_id, equipo_id, equipo_nombre, fixture_id, fecha_utc,
-         local, visitante, liga),
-    )
-    conn.commit()
-    conn.close()
+    from datetime import datetime
+    session = _get_session()
+    try:
+        existing = session.query(PartidoProgramado).filter(
+            PartidoProgramado.fixture_id == fixture_id
+        ).first()
+        if not existing:
+            try:
+                fecha_dt = datetime.fromisoformat(fecha_utc.replace("Z", "+00:00"))
+            except Exception:
+                fecha_dt = datetime.utcnow()
+            session.add(PartidoProgramado(
+                chat_id=chat_id, equipo_id=equipo_id, equipo_nombre=equipo_nombre,
+                fixture_id=fixture_id, fecha_utc=fecha_dt,
+                local=local, visitante=visitante, liga=liga,
+            ))
+            session.commit()
+    finally:
+        session.close()
 
 
 def obtener_partidos_para_chequear() -> list:
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM partidos_programados WHERE en_vivo = 0")
-    rows = cursor.fetchall()
-    conn.close()
-    return rows
+    session = _get_session()
+    try:
+        rows = session.query(PartidoProgramado).filter(
+            PartidoProgramado.en_vivo == False
+        ).all()
+        return [_partido_to_tuple(r) for r in rows]
+    finally:
+        session.close()
 
 
 def obtener_partidos_en_vivo() -> list:
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM partidos_programados WHERE en_vivo = 1")
-    rows = cursor.fetchall()
-    conn.close()
-    return rows
+    session = _get_session()
+    try:
+        rows = session.query(PartidoProgramado).filter(
+            PartidoProgramado.en_vivo == True
+        ).all()
+        return [_partido_to_tuple(r) for r in rows]
+    finally:
+        session.close()
+
+
+def _partido_to_tuple(r) -> tuple:
+    return (
+        r.id, r.chat_id, r.equipo_id, r.equipo_nombre, r.fixture_id,
+        r.fecha_utc.isoformat() if r.fecha_utc else "",
+        r.local, r.visitante, r.liga,
+        1 if r.notificado_inicio else 0,
+        1 if r.notificado_15min else 0,
+        1 if r.notificado_manana else 0,
+        1 if r.en_vivo else 0,
+        r.goles_local, r.goles_visitante, r.estado, ""
+    )
 
 
 def marcar_partido_en_vivo(fixture_id: str):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        "UPDATE partidos_programados SET en_vivo = 1 WHERE fixture_id = ?",
-        (fixture_id,),
-    )
-    conn.commit()
-    conn.close()
+    session = _get_session()
+    try:
+        session.query(PartidoProgramado).filter(
+            PartidoProgramado.fixture_id == fixture_id
+        ).update({"en_vivo": True})
+        session.commit()
+    finally:
+        session.close()
 
 
 def actualizar_estado_partido(fixture_id: str, estado: str,
                               goles_local: int, goles_visitante: int):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        """UPDATE partidos_programados
-           SET estado = ?, goles_local = ?, goles_visitante = ?
-           WHERE fixture_id = ?""",
-        (estado, goles_local, goles_visitante, fixture_id),
-    )
-    conn.commit()
-    conn.close()
+    session = _get_session()
+    try:
+        session.query(PartidoProgramado).filter(
+            PartidoProgramado.fixture_id == fixture_id
+        ).update({
+            "estado": estado,
+            "goles_local": goles_local,
+            "goles_visitante": goles_visitante,
+        })
+        session.commit()
+    finally:
+        session.close()
+
+
+_CAMPO_MAP = {
+    "notificado_inicio": "notificado_inicio",
+    "notificado_15min": "notificado_15min",
+    "notificado_manana": "notificado_manana",
+    "notificado_lineup": "notificado_lineup",
+    "notificado_ht": "notificado_ht",
+    "notificado_2h": "notificado_2h",
+}
 
 
 def marcar_notificado(fixture_id: str, campo: str):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        f"UPDATE partidos_programados SET {campo} = 1 WHERE fixture_id = ?",
-        (fixture_id,),
-    )
-    conn.commit()
-    conn.close()
+    col = _CAMPO_MAP.get(campo)
+    if not col:
+        return
+    session = _get_session()
+    try:
+        session.query(PartidoProgramado).filter(
+            PartidoProgramado.fixture_id == fixture_id
+        ).update({col: True})
+        session.commit()
+    finally:
+        session.close()
 
 
 def verificar_notificado(fixture_id: str, campo: str) -> bool:
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        f"SELECT {campo} FROM partidos_programados WHERE fixture_id = ?",
-        (fixture_id,),
-    )
-    row = cursor.fetchone()
-    conn.close()
-    return row[0] if row else False
+    col = _CAMPO_MAP.get(campo)
+    if not col:
+        return False
+    session = _get_session()
+    try:
+        row = session.query(PartidoProgramado).filter(
+            PartidoProgramado.fixture_id == fixture_id
+        ).first()
+        if row:
+            return bool(getattr(row, col, False))
+        return False
+    finally:
+        session.close()
 
 
 def eliminar_partido(fixture_id: str):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        "DELETE FROM partidos_programados WHERE fixture_id = ?",
-        (fixture_id,),
-    )
-    conn.commit()
-    conn.close()
+    session = _get_session()
+    try:
+        session.query(PartidoProgramado).filter(
+            PartidoProgramado.fixture_id == fixture_id
+        ).delete()
+        session.commit()
+    finally:
+        session.close()

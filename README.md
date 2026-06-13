@@ -1,4 +1,4 @@
-# BotifutBot - Fútbol en tiempo real
+# BotiFutbol - Fútbol en tiempo real
 
 Bot de Telegram + App web para seguir tus equipos de fútbol favoritos.
 

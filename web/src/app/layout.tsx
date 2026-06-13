@@ -2,11 +2,11 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'BotifutBot - Fútbol en tiempo real',
+  title: 'BotiFutbol - Fútbol en tiempo real',
   description: 'Noticias, estadísticas, partidos en vivo y competiciones de fútbol',
   icons: { icon: '/logo.png' },
   openGraph: {
-    title: 'BotifutBot - Fútbol en tiempo real',
+    title: 'BotiFutbol - Fútbol en tiempo real',
     description: 'Seguí tus equipos, recibí notificaciones y competí con amigos',
     images: ['/logo.png'],
   },

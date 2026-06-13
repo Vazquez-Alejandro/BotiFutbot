@@ -1,4 +1,4 @@
-# BotifutBot - Deploy en Railway
+# BotiFutbol - Deploy en Railway
 
 ## Requisitos
 - Docker

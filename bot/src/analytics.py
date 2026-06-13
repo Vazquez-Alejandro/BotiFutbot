@@ -1,161 +1,131 @@
-import sqlite3
+import os
+import sys
+import json
 from datetime import datetime, timedelta
 from typing import Optional
 
-DB_PATH = "data/botifutbol.db"
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+from sqlalchemy.orm import Session
+from shared.database import SessionLocal, engine, Base
+from shared.models import AnalyticsEvent, MetricaDiaria, BotUsuario
+
+
+def _get_session() -> Session:
+    return SessionLocal()
 
 
 def init_analytics():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS analytics (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            chat_id INTEGER,
-            accion TEXT,
-            detalle TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS metricas_diarias (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            fecha TEXT,
-            usuarios_nuevos INTEGER DEFAULT 0,
-            usuarios_activos INTEGER DEFAULT 0,
-            clicks_links INTEGER DEFAULT 0,
-            conversiones INTEGER DEFAULT 0,
-            mensajes_enviados INTEGER DEFAULT 0
-        )
-    """)
-    conn.commit()
-    conn.close()
+    Base.metadata.create_all(bind=engine)
 
 
-def registrar_accion(chat_id: int, accion: str, detalle: str = ""):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO analytics (chat_id, accion, detalle) VALUES (?, ?, ?)",
-        (chat_id, accion, detalle),
-    )
+def registrar_evento(chat_id: int, accion: str, detalle: str = ""):
+    session = _get_session()
+    try:
+        session.add(AnalyticsEvent(chat_id=chat_id, accion=accion, detalle=detalle))
+        session.flush()
 
-    hoy = datetime.now().strftime("%Y-%m-%d")
-    cursor.execute("SELECT id FROM metricas_diarias WHERE fecha = ?", (hoy,))
-    if not cursor.fetchone():
-        cursor.execute("INSERT INTO metricas_diarias (fecha) VALUES (?)", (hoy,))
+        hoy = datetime.now().strftime("%Y-%m-%d")
+        metrica = session.query(MetricaDiaria).filter(MetricaDiaria.fecha == hoy).first()
+        if not metrica:
+            metrica = MetricaDiaria(fecha=hoy)
+            session.add(metrica)
+            session.flush()
 
-    if accion == "usuario_nuevo":
-        cursor.execute(
-            "UPDATE metricas_diarias SET usuarios_nuevos = usuarios_nuevos + 1 WHERE fecha = ?",
-            (hoy,),
-        )
-    elif accion == "click_link":
-        cursor.execute(
-            "UPDATE metricas_diarias SET clicks_links = clicks_links + 1 WHERE fecha = ?",
-            (hoy,),
-        )
-    elif accion == "conversion":
-        cursor.execute(
-            "UPDATE metricas_diarias SET conversiones = conversiones + 1 WHERE fecha = ?",
-            (hoy,),
-        )
-    elif accion in ("start", "buscar", "noticias", "equipos"):
-        cursor.execute(
-            "UPDATE metricas_diarias SET usuarios_activos = usuarios_activos + 1 WHERE fecha = ?",
-            (hoy,),
-        )
+        if accion == "usuario_nuevo":
+            metrica.usuarios_nuevos = (metrica.usuarios_nuevos or 0) + 1
+        elif accion == "click_link":
+            metrica.clicks_links = (metrica.clicks_links or 0) + 1
+        elif accion == "conversion":
+            metrica.conversiones = (metrica.conversiones or 0) + 1
+        elif accion in ("start", "buscar", "noticias", "equipos"):
+            metrica.usuarios_activos = (metrica.usuarios_activos or 0) + 1
 
-    conn.commit()
-    conn.close()
+        session.commit()
+    finally:
+        session.close()
+
+
+registrar_accion = registrar_evento
 
 
 def obtener_usuarios_activos(dias: int = 7) -> int:
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    fecha_limite = (datetime.now() - timedelta(days=dias)).strftime("%Y-%m-%d")
-    cursor.execute(
-        "SELECT COUNT(DISTINCT chat_id) FROM analytics WHERE created_at >= ?",
-        (fecha_limite,),
-    )
-    count = cursor.fetchone()[0]
-    conn.close()
-    return count
+    session = _get_session()
+    try:
+        fecha_limite = (datetime.now() - timedelta(days=dias)).strftime("%Y-%m-%d %H:%M:%S")
+        count = session.query(AnalyticsEvent).filter(
+            AnalyticsEvent.created_at >= fecha_limite
+        ).distinct(AnalyticsEvent.chat_id).count()
+        return count
+    finally:
+        session.close()
 
 
 def obtener_total_usuarios() -> int:
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM usuarios")
-    count = cursor.fetchone()[0]
-    conn.close()
-    return count
+    session = _get_session()
+    try:
+        return session.query(BotUsuario).count()
+    finally:
+        session.close()
 
 
 def obtener_clicks_links(dias: int = 30) -> int:
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    fecha_limite = (datetime.now() - timedelta(days=dias)).strftime("%Y-%m-%d")
-    cursor.execute(
-        "SELECT COUNT(*) FROM analytics WHERE accion = 'click_link' AND created_at >= ?",
-        (fecha_limite,),
-    )
-    count = cursor.fetchone()[0]
-    conn.close()
-    return count
+    session = _get_session()
+    try:
+        fecha_limite = (datetime.now() - timedelta(days=dias)).strftime("%Y-%m-%d %H:%M:%S")
+        return session.query(AnalyticsEvent).filter(
+            AnalyticsEvent.accion == "click_link",
+            AnalyticsEvent.created_at >= fecha_limite,
+        ).count()
+    finally:
+        session.close()
 
 
 def obtener_conversiones(dias: int = 30) -> int:
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    fecha_limite = (datetime.now() - timedelta(days=dias)).strftime("%Y-%m-%d")
-    cursor.execute(
-        "SELECT COUNT(*) FROM analytics WHERE accion = 'conversion' AND created_at >= ?",
-        (fecha_limite,),
-    )
-    count = cursor.fetchone()[0]
-    conn.close()
-    return count
+    session = _get_session()
+    try:
+        fecha_limite = (datetime.now() - timedelta(days=dias)).strftime("%Y-%m-%d %H:%M:%S")
+        return session.query(AnalyticsEvent).filter(
+            AnalyticsEvent.accion == "conversion",
+            AnalyticsEvent.created_at >= fecha_limite,
+        ).count()
+    finally:
+        session.close()
 
 
 def obtener_metricas_diarias(dias: int = 7) -> list:
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    fecha_limite = (datetime.now() - timedelta(days=dias)).strftime("%Y-%m-%d")
-    cursor.execute(
-        "SELECT * FROM metricas_diarias WHERE fecha >= ? ORDER BY fecha DESC",
-        (fecha_limite,),
-    )
-    rows = cursor.fetchall()
-    conn.close()
-    return [
-        {
-            "fecha": r[1],
-            "usuarios_nuevos": r[2],
-            "usuarios_activos": r[3],
-            "clicks_links": r[4],
-            "conversiones": r[5],
-            "mensajes_enviados": r[6],
-        }
-        for r in rows
-    ]
+    session = _get_session()
+    try:
+        fecha_limite = (datetime.now() - timedelta(days=dias)).strftime("%Y-%m-%d")
+        rows = session.query(MetricaDiaria).filter(
+            MetricaDiaria.fecha >= fecha_limite
+        ).order_by(MetricaDiaria.fecha.desc()).all()
+        return [
+            {
+                "fecha": r.fecha,
+                "usuarios_nuevos": r.usuarios_nuevos or 0,
+                "usuarios_activos": r.usuarios_activos or 0,
+                "clicks_links": r.clicks_links or 0,
+                "conversiones": r.conversiones or 0,
+                "mensajes_enviados": r.mensajes_enviados or 0,
+            }
+            for r in rows
+        ]
+    finally:
+        session.close()
 
 
 def obtener_top_equipos(limit: int = 5) -> list:
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT equipos FROM usuarios WHERE activo = 1")
-    rows = cursor.fetchall()
-    conn.close()
-
-    conteo = {}
-    for row in rows:
-        import json
-
-        equipos = json.loads(row[0])
-        for eq in equipos:
-            nombre = eq.get("nombre", "")
-            conteo[nombre] = conteo.get(nombre, 0) + 1
-
-    ordenados = sorted(conteo.items(), key=lambda x: x[1], reverse=True)
-    return ordenados[:limit]
+    session = _get_session()
+    try:
+        rows = session.query(BotUsuario).filter(BotUsuario.activo == True).all()
+        conteo = {}
+        for row in rows:
+            equipos = json.loads(row.equipos)
+            for eq in equipos:
+                nombre = eq.get("nombre", "")
+                conteo[nombre] = conteo.get(nombre, 0) + 1
+        ordenados = sorted(conteo.items(), key=lambda x: x[1], reverse=True)
+        return ordenados[:limit]
+    finally:
+        session.close()

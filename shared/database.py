@@ -6,9 +6,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://localhost:5432/botifutbol")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///data/botifutbol.db")
 
-engine = create_engine(DATABASE_URL)
+engine_args = {"pool_pre_ping": True, "pool_size": 5, "max_overflow": 5}
+if "sqlite" in DATABASE_URL:
+    engine_args = {"connect_args": {"check_same_thread": False}}
+
+engine = create_engine(DATABASE_URL, **engine_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

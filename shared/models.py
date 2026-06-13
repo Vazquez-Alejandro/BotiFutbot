@@ -91,3 +91,79 @@ class PartidoGuardado(Base):
     estado = Column(String, default="NS")
     ronda = Column(String, nullable=True)
     actualizado_en = Column(DateTime, default=datetime.utcnow)
+
+
+class BotUsuario(Base):
+    __tablename__ = "bot_usuarios"
+
+    chat_id = Column(Integer, primary_key=True)
+    username = Column(String, nullable=True)
+    equipos = Column(Text, default="[]")
+    activo = Column(Boolean, default=True)
+    creado_en = Column(DateTime, default=datetime.utcnow)
+
+
+class EventoEnviado(Base):
+    __tablename__ = "eventos_enviados"
+
+    id = Column(Integer, primary_key=True, index=True)
+    chat_id = Column(Integer, index=True)
+    evento_id = Column(String, index=True)
+    tipo = Column(String, nullable=True)
+    enviado_en = Column(DateTime, default=datetime.utcnow)
+
+
+class NoticiaEnviada(Base):
+    __tablename__ = "noticias_enviadas"
+
+    id = Column(Integer, primary_key=True, index=True)
+    chat_id = Column(Integer, index=True)
+    noticia_url = Column(String, unique=True)
+    enviado_en = Column(DateTime, default=datetime.utcnow)
+
+
+class PartidoProgramado(Base):
+    __tablename__ = "partidos_programados"
+
+    id = Column(Integer, primary_key=True, index=True)
+    chat_id = Column(Integer, index=True)
+    equipo_id = Column(Integer)
+    equipo_nombre = Column(String)
+    fixture_id = Column(String, unique=True, index=True)
+    fecha_utc = Column(DateTime)
+    local = Column(String)
+    visitante = Column(String)
+    liga = Column(String)
+    notificado_inicio = Column(Boolean, default=False)
+    notificado_15min = Column(Boolean, default=False)
+    notificado_manana = Column(Boolean, default=False)
+    notificado_lineup = Column(Boolean, default=False)
+    notificado_ht = Column(Boolean, default=False)
+    notificado_2h = Column(Boolean, default=False)
+    en_vivo = Column(Boolean, default=False)
+    goles_local = Column(Integer, default=0)
+    goles_visitante = Column(Integer, default=0)
+    estado = Column(String, default="")
+    enviado_en = Column(DateTime, default=datetime.utcnow)
+
+
+class AnalyticsEvent(Base):
+    __tablename__ = "analytics"
+
+    id = Column(Integer, primary_key=True, index=True)
+    chat_id = Column(Integer, index=True)
+    accion = Column(String)
+    detalle = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class MetricaDiaria(Base):
+    __tablename__ = "metricas_diarias"
+
+    id = Column(Integer, primary_key=True, index=True)
+    fecha = Column(String, unique=True, index=True)
+    usuarios_nuevos = Column(Integer, default=0)
+    usuarios_activos = Column(Integer, default=0)
+    clicks_links = Column(Integer, default=0)
+    conversiones = Column(Integer, default=0)
+    mensajes_enviados = Column(Integer, default=0)

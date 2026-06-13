@@ -17,9 +17,9 @@ export default function DashboardPage() {
       <header className="bg-dark-card border-b border-dark-border sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="BotifutBot" className="w-10 h-10 rounded-xl" />
+            <img src="/logo.png" alt="BotiFutbol" className="w-10 h-10 rounded-xl" />
             <div>
-              <h1 className="text-lg font-bold text-white">BotifutBot</h1>
+              <h1 className="text-lg font-bold text-white">BotiFutbol</h1>
               {user && (
                 <p className="text-xs text-gray-500">@{user.username || user.first_name}</p>
               )}

@@ -39,7 +39,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard_menu_principal())
     mensaje = (
         f"¡Hola {user.first_name}! 👋\n\n"
-        "Soy *BotifutBot* ⚽, tu asistente personal de fútbol.\n\n"
+        "Soy *BotiFutbol* ⚽, tu asistente personal de fútbol.\n\n"
         "Te enviaré noticias y actualizaciones de los equipos que elijas.\n\n"
         "Elegí una opción del menú para comenzar:"
     )
@@ -346,12 +346,17 @@ async def ayuda(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     texto = (
-        "ℹ️ *Ayuda - BotifutBot*\n\n"
+        "ℹ️ *Ayuda - BotiFutbol*\n\n"
         "*Comandos disponibles:*\n"
         "/start - Iniciar el bot\n"
         "/equipos - Ver tus equipos\n"
         "/buscar - Buscar un equipo\n"
         "/noticias - Ver noticias\n"
+        "/live - Partidos en vivo\n"
+        "/mundial - Mundial 2026\n"
+        "/premium - Planes premium\n"
+        "/afiliados - Programa de afiliados\n"
+        "/stats - Estadísticas del bot\n"
         "/ayuda - Mostrar esta ayuda\n\n"
         "*¿Cómo funciona?*\n"
         "1. Elegí los equipos que querés seguir\n"

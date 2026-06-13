@@ -1,5 +1,10 @@
 import logging
+import os
+import sys
 from datetime import datetime, timedelta, timezone
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler,
@@ -444,7 +449,7 @@ async def resumen_semanal(context: ContextTypes.DEFAULT_TYPE):
             total_partidos = len(obtener_partidos_para_chequear())
 
             msg = (
-                f"📊 *Resumen semanal - BotifutBot*\n\n"
+                f"📊 *Resumen semanal - BotiFutbol*\n\n"
                 f"⚽ Equipos seguidos: {len(usuario.equipos)}\n"
                 f"📅 Próximos partidos: {total_partidos}\n"
                 f"🏆 Ligas disponibles: 7 países\n\n"
@@ -462,7 +467,7 @@ async def resumen_semanal(context: ContextTypes.DEFAULT_TYPE):
 async def cmd_premium(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     await update.message.reply_text(
-        "👑 *BotifutBot Premium*\n\n"
+        "👑 *BotiFutbol Premium*\n\n"
         "🔹 *Gratuito:* 3 equipos, notificaciones cada 60s, anuncios\n"
         "🔹 *Premium ($499/mes):* 20 equipos, tiempo real, sin anuncios, predicciones\n"
         "🔹 *Pro ($999/mes):* Ilimitado, API access, webhooks\n\n"
@@ -493,6 +498,65 @@ async def cmd_afiliados(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def cmd_mundial(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    await update.message.reply_text("🌍 Buscando datos del Mundial...")
+
+    from src.config import API_FOOTBALL_KEY
+    import requests
+
+    headers = {
+        "x-rapidapi-host": "v3.football.api-sports.io",
+        "x-rapidapi-key": API_FOOTBALL_KEY,
+    }
+    base = "https://v3.football.api-sports.io"
+
+    try:
+        fixtures_resp = requests.get(f"{base}/fixtures", headers=headers, params={"league": 1, "season": 2026, "last": 10}, timeout=10)
+        fixtures_data = fixtures_resp.json().get("response", []) if fixtures_resp.ok else []
+
+        msg = "🌍 *Mundial 2026*\n\n"
+
+        resultados = [f for f in fixtures_data if f.get("fixture", {}).get("status", {}).get("short") == "FT"]
+        if resultados:
+            msg += "*Últimos resultados:*\n"
+            for p in resultados[:5]:
+                teams = p.get("teams", {})
+                goals = p.get("goals", {})
+                home = teams.get("home", {}).get("name", "")
+                away = teams.get("away", {}).get("name", "")
+                g_h = goals.get("home", "-")
+                g_a = goals.get("away", "-")
+                msg += f"⚽ {home} {g_h} - {g_a} {away}\n"
+
+        proximos = [f for f in fixtures_data if f.get("fixture", {}).get("status", {}).get("short") not in ("FT", "AET", "PEN")]
+        if proximos:
+            msg += "\n*Próximos:*\n"
+            for p in proximos[:5]:
+                fixture = p.get("fixture", {})
+                teams = p.get("teams", {})
+                date = fixture.get("date", "")
+                home = teams.get("home", {}).get("name", "")
+                away = teams.get("away", {}).get("name", "")
+                try:
+                    from datetime import datetime
+                    d = datetime.fromisoformat(date.replace("Z", "+00:00"))
+                    date_str = d.strftime("%d/%m %H:%M")
+                except:
+                    date_str = date[:10]
+                msg += f"📅 {home} vs {away} — {date_str}\n"
+
+        if not resultados and not proximos:
+            msg += "No hay partidos disponibles del Mundial.\n"
+
+        msg += "\n📊 Usá /mundial para actualizar\n🌐 Web: botifutbol.vercel.app/mundial"
+        await update.message.reply_text(msg, parse_mode="Markdown")
+
+    except Exception as e:
+        logger.error(f"Error cmd_mundial: {e}")
+        await update.message.reply_text("Error al obtener datos del Mundial. Intentalo más tarde.")
+
+
 async def cmd_live(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     partidos = football_client.obtener_partidos_en_vivo()
@@ -517,7 +581,7 @@ async def cmd_live(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def main():
     init_db()
     init_analytics()
-    logger.info("Iniciando BotifutBot...")
+    logger.info("Iniciando BotiFutbol...")
 
     app = Application.builder().token(TELEGRAM_TOKEN).build()
 
@@ -530,6 +594,7 @@ def main():
     app.add_handler(CommandHandler("premium", cmd_premium))
     app.add_handler(CommandHandler("afiliados", cmd_afiliados))
     app.add_handler(CommandHandler("live", cmd_live))
+    app.add_handler(CommandHandler("mundial", cmd_mundial))
 
     app.add_handler(CallbackQueryHandler(menu_principal, pattern="^menu_principal$"))
     app.add_handler(CallbackQueryHandler(mis_equipos, pattern="^mis_equipos$"))
@@ -552,7 +617,7 @@ def main():
     job_queue.run_daily(resumen_diario, time=timezone.utc, days=(0, 1, 2, 3, 4, 5, 6))
     job_queue.run_weekly(resumen_semanal, day_of_week=0, time=timezone.utc)
 
-    logger.info("BotifutBot está corriendo! 🚀")
+    logger.info("BotiFutbol está corriendo! 🚀")
     app.run_polling(
         allowed_updates=["message", "callback_query"],
         drop_pending_updates=True,

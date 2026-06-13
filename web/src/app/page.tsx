@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Trophy, Calendar, Users, BarChart3, Zap, Radio, Crown, ChevronRight, ExternalLink, TrendingUp } from 'lucide-react'
+import { Trophy, Calendar, Users, BarChart3, Zap, Radio, Crown, Globe, ChevronRight, ExternalLink, TrendingUp } from 'lucide-react'
 
 export default function Home() {
   return (
@@ -9,8 +9,8 @@ export default function Home() {
       <header className="bg-dark-card border-b border-dark-border sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="BotifutBot" className="w-10 h-10 rounded-xl" />
-            <h1 className="text-xl font-bold text-white">BotifutBot</h1>
+            <img src="/logo.png" alt="BotiFutbol" className="w-10 h-10 rounded-xl" />
+            <h1 className="text-xl font-bold text-white">BotiFutbol</h1>
           </div>
           <div className="flex items-center gap-2">
             <Link href="/login" className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg font-medium text-sm transition">
@@ -51,6 +51,20 @@ export default function Home() {
         </section>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <Link href="/mundial" className="md:col-span-2">
+            <div className="bg-gradient-to-r from-blue-900/40 via-yellow-900/20 to-blue-900/40 border border-yellow-500/30 rounded-xl p-5 hover:border-yellow-400/50 transition cursor-pointer group">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Globe className="w-6 h-6 text-yellow-400" />
+                  <div>
+                    <h3 className="font-bold text-white">Mundial 2026</h3>
+                    <p className="text-gray-400 text-sm">Grupos, resultados, fixture y goleadores</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-yellow-400/50 group-hover:text-yellow-400 transition" />
+              </div>
+            </div>
+          </Link>
           <FeatureCard
             icon={<Radio className="w-6 h-6 text-red-400" />}
             title="En Vivo"
@@ -105,7 +119,7 @@ export default function Home() {
             <h3 className="text-xl font-bold text-white">Ganá con tus recomendaciones</h3>
           </div>
           <p className="text-gray-400 mb-6">
-            Compartí BotifutBot con tus amigos y ganá hasta 25% de comisión por cada registro en las casas de apuestas.
+            Compartí BotiFutbol con tus amigos y ganá hasta 25% de comisión por cada registro en las casas de apuestas.
             Tu enlace único de afiliado ya está activo en el bot.
           </p>
           <div className="grid grid-cols-3 gap-4 text-center">
@@ -140,7 +154,7 @@ export default function Home() {
       </main>
 
       <footer className="border-t border-dark-border mt-12 py-6 text-center text-gray-500 text-sm">
-        <p>BotifutBot © 2026 — ⚽ Hecho para los amantes del fútbol</p>
+        <p>BotiFutbol © 2026 — ⚽ Hecho para los amantes del fútbol</p>
         <div className="flex items-center justify-center gap-4 mt-2">
           <Link href="/premium" className="hover:text-primary transition">Premium</Link>
           <Link href="/live" className="hover:text-primary transition">En Vivo</Link>
