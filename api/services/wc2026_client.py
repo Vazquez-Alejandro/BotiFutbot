@@ -247,5 +247,43 @@ def build_fixtures() -> list:
     return _build_fixtures_static()
 
 
-def build_topscorers() -> list:
+def _build_topscorers_live() -> list:
     return []
+
+
+def _build_topscorers_static() -> list:
+    data = _fetch_static("matches.json")
+    matches = data.get("data", []) if data else []
+    team_goals: dict[str, dict] = {}
+
+    for m in matches:
+        if m.get("status") != "FINISHED":
+            continue
+        sh = m.get("score_home")
+        sa = m.get("score_away")
+        if sh is None or sa is None:
+            continue
+
+        for code, name, scored in [
+            (m.get("home"), m.get("home_name", m.get("home")), sh),
+            (m.get("away"), m.get("away_name", m.get("away")), sa),
+        ]:
+            if code not in team_goals:
+                team_goals[code] = {"team_code": code, "team_name": name, "goals": 0, "matches": 0}
+            team_goals[code]["goals"] += scored
+            team_goals[code]["matches"] += 1
+
+    sorted_teams = sorted(team_goals.values(), key=lambda t: (-t["goals"], t["team_name"]))
+    return [
+        {"position": i + 1, "team_code": t["team_code"], "team_name": t["team_name"], "goals": t["goals"], "matches": t["matches"], "avg": round(t["goals"] / t["matches"], 2) if t["matches"] else 0}
+        for i, t in enumerate(sorted_teams)
+    ]
+
+
+def build_topscorers() -> list:
+    if _is_live():
+        try:
+            return _build_topscorers_live()
+        except Exception as e:
+            print(f"Live topscorers failed, falling back to static: {e}")
+    return _build_topscorers_static()

@@ -1,0 +1,12 @@
+Link para pedir API key gratuita de wc2026api.com:
+
+https://github.com/tonkabits/api-worldcup2026/issues/new?title=API+Key+Request+-+BotiFutbol&body=Hi!+I'm+building+a+Telegram+bot+and+web+app+for+the+2026+World+Cup+(BotiFutbol).+I'd+love+to+use+your+API+for+live+scores.+Could+you+please+provide+a+free+tier+API+key?+Thank+you!
+
+Si no responden en GitHub, mandar mail a: luk.becker@proton.me
+
+Alternativa paga (si no hay respuesta):
+- Pro key: $9.99 USD (una sola vez, válida hasta Jul 19)
+- Contacto: luk.becker@proton.me asunto "Pro Key Request — 500 req / day"
+
+Cuando tengas la key, configurala en:
+https://dashboard.render.com → BotiFutbol API → Environment → agregar WC2026_API_KEY

@@ -11,3 +11,9 @@ export async function fetchFixtures() {
   const data = await res.json();
   return data.fixtures || [];
 }
+
+export async function fetchTopScorers() {
+  const res = await fetch(`${API_URL}/mundial/topscorers`);
+  const data = await res.json();
+  return data.scorers || [];
+}

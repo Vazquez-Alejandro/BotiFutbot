@@ -37,11 +37,12 @@ interface Fixture {
 }
 
 interface Scorer {
-  name: string
-  photo: string
-  team: string
-  team_logo: string
+  position: number
+  team_code: string
+  team_name: string
   goals: number
+  matches: number
+  avg: number
 }
 
 type Tab = 'grupos' | 'partidos' | 'goleadores'
@@ -257,38 +258,36 @@ function ScorersTab({ scorers }: { scorers: Scorer[] }) {
       <div className="text-center py-12 text-gray-500">
         <Goal className="w-12 h-12 mx-auto mb-4 opacity-50" />
         <p>No hay datos de goleadores</p>
+        <p className="text-xs mt-2">Los datos individuales estarán disponibles cuando tengamos una API key de datos en vivo</p>
       </div>
     )
   }
 
   return (
     <div className="bg-dark-card rounded-xl border border-dark-border overflow-hidden">
+      <div className="bg-yellow-500/10 px-4 py-2 border-b border-dark-border">
+        <p className="text-xs text-gray-400">Goles por equipo (datos de partidos finalizados)</p>
+      </div>
       <table className="w-full">
         <thead>
           <tr className="border-b border-dark-border text-gray-500 text-xs uppercase">
             <th className="text-left px-4 py-3">#</th>
-            <th className="text-left px-4 py-3">Jugador</th>
             <th className="text-left px-4 py-3">Equipo</th>
+            <th className="text-center px-4 py-3">PJ</th>
             <th className="text-center px-4 py-3">Goles</th>
+            <th className="text-center px-4 py-3">Promedio</th>
           </tr>
         </thead>
         <tbody>
-          {scorers.map((s, i) => (
-            <tr key={i} className="border-b border-dark-border/50">
-              <td className="px-4 py-3 text-gray-400 text-sm">{i + 1}</td>
+          {scorers.map(s => (
+            <tr key={s.team_code} className="border-b border-dark-border/50">
+              <td className="px-4 py-3 text-gray-400 text-sm">{s.position}</td>
               <td className="px-4 py-3">
-                <div className="flex items-center gap-3">
-                  {s.photo && <img src={s.photo} alt="" className="w-8 h-8 rounded-full" />}
-                  <span className="text-white text-sm font-medium">{s.name}</span>
-                </div>
+                <span className="text-white text-sm font-medium">{s.team_name}</span>
               </td>
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-2">
-                  {s.team_logo && <img src={s.team_logo} alt="" className="w-5 h-5" />}
-                  <span className="text-gray-400 text-sm">{s.team}</span>
-                </div>
-              </td>
+              <td className="px-4 py-3 text-center text-gray-400 text-sm">{s.matches}</td>
               <td className="px-4 py-3 text-center text-yellow-400 font-bold text-lg">{s.goals}</td>
+              <td className="px-4 py-3 text-center text-gray-400 text-sm">{s.avg}</td>
             </tr>
           ))}
         </tbody>
